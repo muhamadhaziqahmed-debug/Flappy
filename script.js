@@ -29,10 +29,10 @@ const CFG = {
   BIRD_RADIUS:   14,      // collision circle radius
   BIRD_DRAW_W:   38,      // sprite draw width
   BIRD_DRAW_H:   30,      // sprite draw height
-  JUMP_VEL:     -9.5,     // upward velocity on flap
+  JUMP_VEL:     -6,     // upward velocity on flap
   GRAVITY:       0.42,    // pixels-per-frame² pulled downward
   MAX_FALL_VEL:  12,      // terminal velocity
-  TILT_UP:      -15,      // degrees when rising
+  TILT_UP:      -25,      // degrees when rising
   TILT_DOWN:     70,      // max degrees when falling
 
   /* Pipes */
