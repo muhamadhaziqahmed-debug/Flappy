@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Flapster — Retro Bird Game</title>
+
+  <!-- Google Fonts: Press Start 2P for authentic pixel-game feel -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet" />
+
+  <!-- External stylesheet -->
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <p class="game-title">✦ F L A P S T E R ✦</p>
+
+  <div class="canvas-wrap" id="canvasWrap">
+    <canvas id="gameCanvas" width="400" height="600"></canvas>
+  </div>
+
+  <p class="hint">SPACE / TAP TO FLAP &nbsp;·&nbsp; AVOID THE PIPES</p>
+
+  <!-- External game script (deferred so DOM is ready) -->
+  <script src="script.js"></script>
+</body>
+</html>

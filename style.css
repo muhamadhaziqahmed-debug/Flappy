@@ -1,0 +1,119 @@
+/* ============================================================
+   FLAPSTER — style.css
+   All visual styling: layout, CRT effect, responsiveness
+   ============================================================ */
+
+/* ── CSS Custom Properties ── */
+:root {
+  --sky-top:    #1a0533;
+  --sky-bottom: #ff6b35;
+  --accent:     #ffd700;
+  --green-dark: #1a5c1a;
+  --green-mid:  #2e8b2e;
+  --green-light:#39b539;
+  --pipe-dark:  #1a5c1a;
+  --pipe-cap:   #2e8b2e;
+  --bird-body:  #ffd700;
+  --bird-wing:  #ff9500;
+  --bird-eye:   #1a0533;
+  --scanline:   rgba(0,0,0,0.07);
+  --ui-font:    'Press Start 2P', monospace;
+}
+
+/* ── Reset ── */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+/* ── Page layout — centers the game on screen ── */
+html, body {
+  height: 100%;
+  background: #0d0117;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--ui-font);
+  user-select: none;  /* prevents text highlight on rapid clicks */
+  overflow: hidden;
+}
+
+/* ── Title above the canvas ── */
+.game-title {
+  color: var(--accent);
+  font-size: 0.7rem;
+  letter-spacing: 0.25em;
+  margin-bottom: 10px;
+  text-shadow: 0 0 12px rgba(255,215,0,0.6), 2px 2px 0 #a0008a;
+  animation: titlePulse 2.5s ease-in-out infinite;
+}
+
+@keyframes titlePulse {
+  0%,100% { opacity: 1; }
+  50%      { opacity: 0.75; }
+}
+
+/* ── Canvas wrapper — produces the CRT arcade screen illusion ── */
+.canvas-wrap {
+  position: relative;
+  width: 400px;
+  height: 600px;
+  border: 3px solid #6a006a;
+  box-shadow:
+    0 0 0 2px #a000a0,
+    0 0 30px rgba(160, 0, 160, 0.6),
+    0 0 80px rgba(255, 107, 53, 0.25),
+    inset 0 0 40px rgba(0,0,0,0.5);
+  border-radius: 4px;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+/* ── Scanline overlay — purely decorative retro effect ── */
+.canvas-wrap::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    to bottom,
+    transparent 0px,
+    transparent 3px,
+    var(--scanline) 3px,
+    var(--scanline) 4px
+  );
+  pointer-events: none; /* clicks pass through to canvas */
+  z-index: 10;
+}
+
+/* ── The game canvas itself ── */
+canvas {
+  display: block;
+  width: 400px;
+  height: 600px;
+}
+
+/* ── Small hint text below the canvas ── */
+.hint {
+  color: rgba(255,215,0,0.4);
+  font-size: 0.45rem;
+  margin-top: 10px;
+  letter-spacing: 0.1em;
+}
+
+/* ── Responsive scaling for smaller screens ── */
+
+/* Short screens (e.g. landscape mobile) */
+@media (max-height: 680px) {
+  .canvas-wrap { transform: scale(0.85); transform-origin: top center; }
+  .game-title  { margin-bottom: 4px; }
+}
+
+/* Narrow screens (e.g. portrait mobile) */
+@media (max-width: 430px) {
+  .canvas-wrap {
+    transform: scale(calc(min(100vw, 100vh * 0.67) / 400));
+    transform-origin: top center;
+  }
+}
