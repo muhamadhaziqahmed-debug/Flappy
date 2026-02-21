@@ -126,3 +126,8 @@ canvas {
 body {
   touch-action: manipulation;
 }
+canvas {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: none;
+  outline: none;
+}
