@@ -117,3 +117,12 @@ canvas {
     transform-origin: top center;
   }
 }
+* {
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  user-select: none;
+}
+
+body {
+  touch-action: manipulation;
+}
