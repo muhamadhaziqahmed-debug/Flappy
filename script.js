@@ -20,7 +20,6 @@
    §1  CONFIG
    ================================================================ */
 const CFG = {
-   CFG.JUMP_VEL = parseFloat(localStorage.getItem('jumpVel')) || CFG.JUMP_VEL;
   /* Canvas */
   W: 400,
   H: 600,
@@ -762,58 +761,6 @@ document.addEventListener('keydown', e => {
 document.getElementById('canvasWrap').addEventListener('pointerdown', e => {
   e.preventDefault();
   handleFlap();
-});
-/* ================================================================
-   §8.5  SETTINGS (Jump Velocity Control)
-   ================================================================ */
-
-// Create settings button dynamically
-const settingsBtn = document.createElement('button');
-settingsBtn.textContent = '⚙';
-settingsBtn.style.position = 'absolute';
-settingsBtn.style.top = '10px';
-settingsBtn.style.right = '10px';
-settingsBtn.style.zIndex = '100';
-settingsBtn.style.padding = '6px 10px';
-settingsBtn.style.cursor = 'pointer';
-document.body.appendChild(settingsBtn);
-
-// Create settings panel
-const settingsPanel = document.createElement('div');
-settingsPanel.style.position = 'absolute';
-settingsPanel.style.top = '50px';
-settingsPanel.style.right = '10px';
-settingsPanel.style.background = 'rgba(0,0,0,0.85)';
-settingsPanel.style.padding = '12px';
-settingsPanel.style.borderRadius = '8px';
-settingsPanel.style.display = 'none';
-settingsPanel.style.color = '#fff';
-settingsPanel.style.zIndex = '100';
-
-settingsPanel.innerHTML = `
-  <label style="font-size:12px;">Jump Velocity:</label><br>
-  <input type="range" id="jumpSlider" min="-15" max="-4" step="0.5" value="${CFG.JUMP_VEL}">
-  <div id="jumpValue" style="margin-top:6px; font-size:12px;">
-    ${CFG.JUMP_VEL}
-  </div>
-`;
-
-document.body.appendChild(settingsPanel);
-
-const jumpSlider = settingsPanel.querySelector('#jumpSlider');
-const jumpValue  = settingsPanel.querySelector('#jumpValue');
-
-// Toggle panel
-settingsBtn.addEventListener('click', () => {
-  settingsPanel.style.display =
-    settingsPanel.style.display === 'none' ? 'block' : 'none';
-});
-
-// Update jump velocity live
-jumpSlider.addEventListener('input', () => {
-  const newVal = parseFloat(jumpSlider.value);
-  CFG.JUMP_VEL = newVal;
-  jumpValue.textContent = newVal;
 });
 
 /* ================================================================
