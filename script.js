@@ -32,7 +32,7 @@ const CFG = {
   JUMP_VEL:     -9.5,     // upward velocity on flap
   GRAVITY:       0.42,    // pixels-per-frame² pulled downward
   MAX_FALL_VEL:  12,      // terminal velocity
-  TILT_UP:      -25,      // degrees when rising
+  TILT_UP:      -15,      // degrees when rising
   TILT_DOWN:     70,      // max degrees when falling
 
   /* Pipes */
