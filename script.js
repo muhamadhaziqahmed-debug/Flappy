@@ -20,6 +20,10 @@
    §1  CONFIG
    ================================================================ */
 const CFG = {
+   
+  /* Game */
+  DIFFICULTY: "NORMAL", // EASY | NORMAL | HARD
+   
   /* Canvas */
   W: 400,
   H: 600,
@@ -42,6 +46,32 @@ const CFG = {
   PIPE_SPAWN_X:  420,     // spawn off right edge
   PIPE_INTERVAL: 1700,    // ms between pipe spawns
 
+};
+
+   const DIFFICULTY_PRESETS = {
+  EASY: {
+    PIPE_GAP: 180,
+    PIPE_SPEED: 2.2,
+    GRAVITY: 0.38
+  },
+  NORMAL: {
+    PIPE_GAP: 148,
+    PIPE_SPEED: 2.6,
+    GRAVITY: 0.42
+  },
+  HARD: {
+    PIPE_GAP: 120,
+    PIPE_SPEED: 3.2,
+    GRAVITY: 0.48
+  }
+};
+function applyDifficulty(level) {
+  const d = DIFFICULTY_PRESETS[level];
+  CFG.PIPE_GAP = d.PIPE_GAP;
+  CFG.PIPE_SPEED = d.PIPE_SPEED;
+  CFG.GRAVITY = d.GRAVITY;
+}
+applyDifficulty(CFG.DIFFICULTY);
   /* Ground */
   GROUND_H:      80,
   GROUND_Y:      520,     // top of ground strip (H - GROUND_H)
