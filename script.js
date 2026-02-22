@@ -11,6 +11,7 @@
    §6  CORE LOOP       — update, render, requestAnimationFrame
    §7  HUD / SCREENS   — start, score, game-over overlays
    §8  INPUT           — keyboard + touch/click
+   §8.5 SETTINGS       — panel, sliders, localStorage persistence
    §9  BOOT            — kick everything off
    ================================================================ */
 
@@ -20,10 +21,6 @@
    §1  CONFIG
    ================================================================ */
 const CFG = {
-   
-  /* Game */
-  DIFFICULTY: "NORMAL", // EASY | NORMAL | HARD
-   
   /* Canvas */
   W: 400,
   H: 600,
@@ -33,7 +30,7 @@ const CFG = {
   BIRD_RADIUS:   14,      // collision circle radius
   BIRD_DRAW_W:   38,      // sprite draw width
   BIRD_DRAW_H:   30,      // sprite draw height
-  JUMP_VEL:     -8,     // upward velocity on flap
+  JUMP_VEL:     -9.5,     // upward velocity on flap
   GRAVITY:       0.42,    // pixels-per-frame² pulled downward
   MAX_FALL_VEL:  12,      // terminal velocity
   TILT_UP:      -25,      // degrees when rising
@@ -46,32 +43,6 @@ const CFG = {
   PIPE_SPAWN_X:  420,     // spawn off right edge
   PIPE_INTERVAL: 1700,    // ms between pipe spawns
 
-};
-
-   const DIFFICULTY_PRESETS = {
-  EASY: {
-    PIPE_GAP: 180,
-    PIPE_SPEED: 2.2,
-    GRAVITY: 0.38
-  },
-  NORMAL: {
-    PIPE_GAP: 148,
-    PIPE_SPEED: 2.6,
-    GRAVITY: 0.42
-  },
-  HARD: {
-    PIPE_GAP: 120,
-    PIPE_SPEED: 3.2,
-    GRAVITY: 0.48
-  }
-};
-function applyDifficulty(level) {
-  const d = DIFFICULTY_PRESETS[level];
-  CFG.PIPE_GAP = d.PIPE_GAP;
-  CFG.PIPE_SPEED = d.PIPE_SPEED;
-  CFG.GRAVITY = d.GRAVITY;
-}
-applyDifficulty(CFG.DIFFICULTY);
   /* Ground */
   GROUND_H:      80,
   GROUND_Y:      520,     // top of ground strip (H - GROUND_H)
@@ -82,6 +53,13 @@ applyDifficulty(CFG.DIFFICULTY);
 
   /* Scoring */
   SCORE_X_THRESHOLD: 90, // pipe cleared when pipe.x + PIPE_W < this
+
+  /* Settings — default values (may be overridden by localStorage at boot) */
+  SETTINGS_DEFAULTS: {
+    JUMP_VEL:  -9.5,   // range: -6 to -13
+    GRAVITY:    0.42,  // range: 0.2 to 0.8
+    PIPE_GAP:   148,   // range: 100 to 220
+  },
 };
 
 
@@ -90,6 +68,7 @@ applyDifficulty(CFG.DIFFICULTY);
    ================================================================ */
 const state = {
   phase: 'START',     // 'START' | 'PLAYING' | 'DEAD'
+  settingsOpen: false, // true while settings panel is visible
 
   bird: null,
   pipes: [],
@@ -466,6 +445,7 @@ let elapsed        = 0;       // total ms since boot (for star twinkle)
 function update(dt) {
   const { bird, pipes, clouds } = state;
   if (state.phase !== 'PLAYING') return;
+  if (state.settingsOpen) return;          // freeze physics while settings open
 
   /* ── Bird physics ── */
   bird.vy = Math.min(bird.vy + CFG.GRAVITY, CFG.MAX_FALL_VEL);
@@ -513,11 +493,7 @@ function update(dt) {
       pipes.splice(i, 1);
     }
   }
-// Difficulty scaling (auto increase)
-if (state.score > 10) CFG.PIPE_GAP = 130;
-if (state.score > 20) CFG.PIPE_GAP = 115;
-if (state.score > 30) CFG.PIPE_SPEED += 0.4;
-   
+
   /* ── Collision detection ── */
   if (checkCollision(bird, pipes)) {
     killBird();
@@ -794,8 +770,283 @@ document.addEventListener('keydown', e => {
 /* Touch / click on canvas */
 document.getElementById('canvasWrap').addEventListener('pointerdown', e => {
   e.preventDefault();
+  /* Ignore taps that land on the settings button or panel */
+  if (e.target.closest('#settingsBtn, #settingsPanel')) return;
   handleFlap();
 });
+
+
+/* ================================================================
+   §8.5  SETTINGS
+   ================================================================
+   Architecture:
+   • settingsConfig  — descriptor array drives all sliders/labels
+   • loadSettings()  — reads localStorage, patches CFG live
+   • saveSettings()  — writes current CFG values to localStorage
+   • buildSettingsUI()— creates DOM nodes (button + panel) inside
+                        #canvasWrap so they scale with it
+   • openSettings() / closeSettings() — toggle with CSS transition
+   • initSettings()  — called once at boot
+   ================================================================ */
+
+/* ── Settings descriptor — one entry per controllable knob ──────
+   Each entry drives: slider min/max/step, live label, and which
+   CFG key to read/write.
+   NOTE: JUMP_VEL is negative internally but displayed as a positive
+   "power" value (we invert on read/write).
+   ──────────────────────────────────────────────────────────────── */
+const settingsConfig = [
+  {
+    key:     'JUMP_VEL',
+    label:   'Jump Power',
+    min:     6,      // displayed as positive (maps to -6)
+    max:     13,     // maps to -13
+    step:    0.5,
+    toDisplay: v => (-v).toFixed(1),          // CFG → slider   (negate)
+    toCFG:     v => -parseFloat(v),           // slider → CFG   (negate)
+    unit:    '',
+  },
+  {
+    key:     'GRAVITY',
+    label:   'Gravity',
+    min:     0.2,
+    max:     0.8,
+    step:    0.02,
+    toDisplay: v => v,                        // no transform
+    toCFG:     v => parseFloat(v),
+    unit:    '',
+  },
+  {
+    key:     'PIPE_GAP',
+    label:   'Pipe Gap',
+    min:     100,
+    max:     220,
+    step:    4,
+    toDisplay: v => v,
+    toCFG:     v => parseInt(v, 10),
+    unit:    'px',
+  },
+];
+
+const SETTINGS_STORAGE_KEY = 'flapster_c2_settings';
+
+/* ── Persist current CFG values to localStorage ── */
+function saveSettings() {
+  const data = {};
+  settingsConfig.forEach(({ key }) => { data[key] = CFG[key]; });
+  localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(data));
+}
+
+/* ── Load saved values from localStorage and apply to CFG ── */
+function loadSettings() {
+  try {
+    const raw = localStorage.getItem(SETTINGS_STORAGE_KEY);
+    if (!raw) return; // first run — defaults already in CFG
+    const saved = JSON.parse(raw);
+    settingsConfig.forEach(({ key }) => {
+      if (saved[key] !== undefined) CFG[key] = saved[key];
+    });
+  } catch (_) { /* corrupt data — silently keep defaults */ }
+}
+
+/* ── Build settings button + panel DOM inside #canvasWrap ── */
+function buildSettingsUI() {
+  const wrap = document.getElementById('canvasWrap');
+
+  /* ────── Gear button ────── */
+  const btn = document.createElement('button');
+  btn.id        = 'settingsBtn';
+  btn.innerHTML = '⚙';
+  btn.setAttribute('aria-label', 'Settings');
+  btn.style.cssText = `
+    position:absolute; top:10px; right:10px; z-index:50;
+    width:34px; height:34px;
+    background:rgba(10,0,20,0.75);
+    border:1.5px solid #9b00db;
+    border-radius:6px;
+    color:#ffd700;
+    font-size:16px; line-height:1;
+    cursor:pointer;
+    display:flex; align-items:center; justify-content:center;
+    box-shadow:0 0 8px rgba(155,0,219,0.5);
+    transition:background 0.2s, box-shadow 0.2s;
+    font-family:sans-serif;
+  `;
+  btn.addEventListener('mouseenter', () => {
+    btn.style.background  = 'rgba(155,0,219,0.4)';
+    btn.style.boxShadow   = '0 0 14px rgba(155,0,219,0.8)';
+  });
+  btn.addEventListener('mouseleave', () => {
+    btn.style.background  = 'rgba(10,0,20,0.75)';
+    btn.style.boxShadow   = '0 0 8px rgba(155,0,219,0.5)';
+  });
+  btn.addEventListener('pointerdown', e => {
+    e.stopPropagation(); // prevent canvasWrap flap handler
+    state.settingsOpen ? closeSettings() : openSettings();
+  });
+
+  /* ────── Panel ────── */
+  const panel = document.createElement('div');
+  panel.id = 'settingsPanel';
+  panel.style.cssText = `
+    position:absolute; top:52px; right:10px; z-index:49;
+    width:220px;
+    background:rgba(10,0,20,0.93);
+    border:1.5px solid #9b00db;
+    border-radius:10px;
+    padding:14px 16px 16px;
+    box-shadow:0 0 24px rgba(155,0,219,0.45), 0 0 60px rgba(255,107,53,0.1);
+    font-family:'Press Start 2P', monospace;
+    color:#ffd700;
+    transform:translateY(-8px) scale(0.97);
+    opacity:0;
+    pointer-events:none;
+    transition:opacity 0.22s ease, transform 0.22s ease;
+  `;
+
+  /* Panel heading */
+  const heading = document.createElement('p');
+  heading.textContent = '⚙ SETTINGS';
+  heading.style.cssText = `
+    font-size:8px; letter-spacing:0.18em;
+    margin-bottom:12px;
+    text-shadow:0 0 8px rgba(255,215,0,0.5);
+  `;
+  panel.appendChild(heading);
+
+  /* Divider */
+  const hr = document.createElement('div');
+  hr.style.cssText = `
+    height:1px; background:rgba(155,0,219,0.4);
+    margin-bottom:12px;
+  `;
+  panel.appendChild(hr);
+
+  /* ── Build one row per setting ── */
+  settingsConfig.forEach(cfg => {
+    const row = document.createElement('div');
+    row.style.cssText = 'margin-bottom:14px;';
+
+    /* Label + live value */
+    const labelRow = document.createElement('div');
+    labelRow.style.cssText = `
+      display:flex; justify-content:space-between;
+      margin-bottom:6px;
+    `;
+
+    const lbl = document.createElement('span');
+    lbl.textContent = cfg.label;
+    lbl.style.cssText = 'font-size:6.5px; color:#c8a0e8;';
+
+    const val = document.createElement('span');
+    val.id = `sv_${cfg.key}`;
+    val.style.cssText = 'font-size:6.5px; color:#ffd700;';
+    val.textContent   = cfg.toDisplay(CFG[cfg.key]) + cfg.unit;
+
+    labelRow.appendChild(lbl);
+    labelRow.appendChild(val);
+
+    /* Slider */
+    const slider = document.createElement('input');
+    slider.type  = 'range';
+    slider.id    = `sl_${cfg.key}`;
+    slider.min   = cfg.min;
+    slider.max   = cfg.max;
+    slider.step  = cfg.step;
+    slider.value = cfg.toDisplay(CFG[cfg.key]);
+    slider.style.cssText = `
+      width:100%; height:4px;
+      appearance:none; -webkit-appearance:none;
+      background:linear-gradient(90deg,#9b00db,#ffd700);
+      border-radius:2px; outline:none; cursor:pointer;
+    `;
+
+    /* Live update on input */
+    slider.addEventListener('input', () => {
+      CFG[cfg.key]  = cfg.toCFG(slider.value);
+      val.textContent = cfg.toDisplay(CFG[cfg.key]) + cfg.unit;
+      saveSettings();
+    });
+
+    /* Stop slider drags from triggering flap */
+    slider.addEventListener('pointerdown', e => e.stopPropagation());
+
+    row.appendChild(labelRow);
+    row.appendChild(slider);
+    panel.appendChild(row);
+  });
+
+  /* ── Reset button ── */
+  const resetBtn = document.createElement('button');
+  resetBtn.textContent = 'RESET DEFAULTS';
+  resetBtn.style.cssText = `
+    width:100%; margin-top:4px; padding:7px 0;
+    background:rgba(155,0,219,0.18);
+    border:1px solid rgba(155,0,219,0.6);
+    border-radius:5px;
+    color:#c8a0e8;
+    font-family:'Press Start 2P', monospace;
+    font-size:5.5px; letter-spacing:0.1em;
+    cursor:pointer;
+    transition:background 0.2s;
+  `;
+  resetBtn.addEventListener('mouseenter', () => {
+    resetBtn.style.background = 'rgba(155,0,219,0.35)';
+  });
+  resetBtn.addEventListener('mouseleave', () => {
+    resetBtn.style.background = 'rgba(155,0,219,0.18)';
+  });
+  resetBtn.addEventListener('pointerdown', e => {
+    e.stopPropagation();
+    /* Restore defaults from CFG.SETTINGS_DEFAULTS */
+    Object.assign(CFG, CFG.SETTINGS_DEFAULTS);
+    /* Re-sync all sliders and live value labels */
+    settingsConfig.forEach(cfg => {
+      const sl = document.getElementById(`sl_${cfg.key}`);
+      const sv = document.getElementById(`sv_${cfg.key}`);
+      sl.value        = cfg.toDisplay(CFG[cfg.key]);
+      sv.textContent  = cfg.toDisplay(CFG[cfg.key]) + cfg.unit;
+    });
+    saveSettings();
+  });
+  panel.appendChild(resetBtn);
+
+  wrap.appendChild(btn);
+  wrap.appendChild(panel);
+}
+
+/* ── Open the settings panel ── */
+function openSettings() {
+  state.settingsOpen = true;
+  const panel = document.getElementById('settingsPanel');
+  panel.style.opacity       = '1';
+  panel.style.transform     = 'translateY(0) scale(1)';
+  panel.style.pointerEvents = 'auto';
+}
+
+/* ── Close the settings panel ── */
+function closeSettings() {
+  state.settingsOpen = false;
+  const panel = document.getElementById('settingsPanel');
+  panel.style.opacity       = '0';
+  panel.style.transform     = 'translateY(-8px) scale(0.97)';
+  panel.style.pointerEvents = 'none';
+}
+
+/* ── Close on Escape key ── */
+document.addEventListener('keydown', e => {
+  if (e.code === 'Escape' && state.settingsOpen) {
+    e.preventDefault();
+    closeSettings();
+  }
+});
+
+/* ── Master init: load → build UI ── */
+function initSettings() {
+  loadSettings();   // patch CFG from localStorage before anything runs
+  buildSettingsUI();
+}
+
 
 /* ================================================================
    §9  BOOT / RESET
@@ -830,6 +1081,7 @@ function resetGame() {
 }
 
 /* Kick it all off */
+initSettings();       // §8.5 — load saved settings + inject UI
 initState();
 state.lastFrameTime = performance.now();
 state.animFrame = requestAnimationFrame(loop);
