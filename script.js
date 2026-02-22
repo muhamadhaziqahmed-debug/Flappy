@@ -513,7 +513,11 @@ function update(dt) {
       pipes.splice(i, 1);
     }
   }
-
+// Difficulty scaling (auto increase)
+if (state.score > 10) CFG.PIPE_GAP = 130;
+if (state.score > 20) CFG.PIPE_GAP = 115;
+if (state.score > 30) CFG.PIPE_SPEED += 0.4;
+   
   /* ── Collision detection ── */
   if (checkCollision(bird, pipes)) {
     killBird();
