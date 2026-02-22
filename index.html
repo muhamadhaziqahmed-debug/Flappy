@@ -2,8 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport"
-content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Flapster — Retro Bird Game</title>
 
   <!-- Google Fonts: Press Start 2P for authentic pixel-game feel -->
@@ -22,24 +21,7 @@ content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"
   </div>
 
   <p class="hint">SPACE / TAP TO FLAP &nbsp;·&nbsp; AVOID THE PIPES</p>
-<!-- SETTINGS BUTTON -->
-<div id="settingsContainer" style="position:absolute; top:12px; right:12px; z-index:10;">
-  <button id="settingsBtn">⚙️ Settings</button>
-</div>
 
-<!-- SETTINGS PANEL -->
-<div id="settingsPanel" 
-     style="display:none; position:absolute; top:50px; right:12px; 
-            background:#222; color:#fff; padding:12px; border-radius:8px; z-index:10; width:220px;">
-  
-  <h4 style="margin:0 0 8px 0;">Settings</h4>
-  
-  <label for="jumpVelInput">Jump Velocity:</label><br>
-  <input type="number" id="jumpVelInput" step="0.1" style="width:100%; margin-top:4px;">
-  
-  <button id="saveSettingsBtn" style="margin-top:8px;">Save</button>
-  <button id="closeSettingsBtn" style="margin-top:8px;">Close</button>
-</div>
   <!-- External game script (deferred so DOM is ready) -->
   <script src="script.js"></script>
 </body>
